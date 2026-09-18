@@ -1,8 +1,23 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { DEPTH_ZONES, MULTIPLIERS_TABLE, WAGER_PRESETS, CERTIFIED_RTP } from '../constants/zones';
+import { DEPTH_ZONES, MULTIPLIERS_TABLE, WAGER_PRESETS } from '../constants/zones';
 import { subAudio } from '../audio/ProceduralSubAudio';
 import { IntelModal } from './IntelModal';
 import { Volume2, VolumeX, HelpCircle, Waves } from 'lucide-react';
+import { draw16BitSubmarine } from '../graphics/pixelSubmarineRenderer';
+import {
+  drawOceanBiomes,
+  drawFaunaAndBubbles,
+  AmbientBubble,
+  AmbientCreature
+} from '../graphics/oceanBiomesRenderer';
+import {
+  drawTacticalDepthGateRail,
+  drawCrtSonarScope,
+  drawTopArcadeTelemetryBar,
+  drawCrtScanlinesAndVignette,
+  drawBreachImplosionBanner,
+  drawJackpotVictoryBanner
+} from '../graphics/tacticalHudRenderer';
 
 export const PixelSubmarineGame: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -28,8 +43,8 @@ export const PixelSubmarineGame: React.FC = () => {
   const rollBytesRef = useRef<number[]>([]);
   const screenShakeRef = useRef<number>(0);
   const particlesRef = useRef<Array<{ x: number; y: number; vx: number; vy: number; size: number; color: string; life: number; maxLife: number }>>([]);
-  const bubblesRef = useRef<Array<{ x: number; y: number; speed: number; size: number; wobble: number }>>([]);
-  const seaCreaturesRef = useRef<Array<{ x: number; y: number; speed: number; type: 'fish' | 'jelly' | 'angler' | 'isopod'; color: string; size: number }>>([]);
+  const bubblesRef = useRef<AmbientBubble[]>([]);
+  const seaCreaturesRef = useRef<AmbientCreature[]>([]);
 
   // Sync refs with state
   useEffect(() => {
@@ -112,10 +127,8 @@ export const PixelSubmarineGame: React.FC = () => {
           subAudio.playJackpotSurfaced();
           spawnWinParticles();
         }
-
-        await new Promise(r => setTimeout(r, 650));
       } else {
-        // Hull breached at this stage!
+        // Hull Implosion Breach!
         setIsBreached(true);
         screenShakeRef.current = 24; // trigger pixel screen shake
         subAudio.playHullBreach();
@@ -173,8 +186,7 @@ export const PixelSubmarineGame: React.FC = () => {
 
   // Initialize Sea Creatures & Ambient Bubbles
   useEffect(() => {
-    // Spawn ambient bubbles
-    const bArr: Array<{ x: number; y: number; speed: number; size: number; wobble: number }> = [];
+    const bArr: AmbientBubble[] = [];
     for (let i = 0; i < 40; i++) {
       bArr.push({
         x: Math.random() * 960,
@@ -186,8 +198,7 @@ export const PixelSubmarineGame: React.FC = () => {
     }
     bubblesRef.current = bArr;
 
-    // Spawn ambient pixel creatures across depth layers
-    const cArr: Array<{ x: number; y: number; speed: number; type: 'fish' | 'jelly' | 'angler' | 'isopod'; color: string; size: number }> = [];
+    const cArr: AmbientCreature[] = [];
     for (let i = 0; i < 18; i++) {
       cArr.push({
         x: Math.random() * 960,
@@ -234,36 +245,52 @@ export const PixelSubmarineGame: React.FC = () => {
       // Disable anti-aliasing for genuine crisp pixel art
       ctx.imageSmoothingEnabled = false;
 
-      // 1. Draw Depth-Adaptive Ocean Background Biomes
+      // 1. Draw 5-Layer Parallax Ocean Biomes
       drawOceanBiomes(ctx, depthMetersRef.current, frameCount);
 
-      // 2. Draw Ambient Sea Creatures & Bubbles
-      drawSeaCreaturesAndBubbles(ctx, depthMetersRef.current, frameCount, seaCreaturesRef.current, bubblesRef.current, isDivingRef.current);
+      // 2. Draw Ambient Sea Fauna & Bubbles
+      drawFaunaAndBubbles(ctx, depthMetersRef.current, frameCount, seaCreaturesRef.current, bubblesRef.current, isDivingRef.current);
 
-      // 3. Draw The Detailed Pixel Art Submarine
-      drawPixelSubmarine(ctx, depthMetersRef.current, frameCount, isDivingRef.current, isBreachedRef.current);
+      // 3. Draw The Detailed 16-Bit Bathyscaphe Submarine
+      draw16BitSubmarine(ctx, {
+        depth: depthMetersRef.current,
+        frame: frameCount,
+        isDiving: isDivingRef.current,
+        isBreached: isBreachedRef.current,
+      });
 
       // 4. Draw Active Particle Bursts (Explosions / Win Confetti)
       drawParticles(ctx, particlesRef.current);
 
-      // 5. Draw In-Game Integrated Tactical Depth Gate Rail (Left HUD)
-      drawDepthGateRail(ctx, depthMetersRef.current, clearedCountRef.current, rollBytesRef.current, isDivingRef.current, isBreachedRef.current);
+      // 5. Draw Tactical Hadal Depth Gate Rail (Left HUD)
+      drawTacticalDepthGateRail(ctx, {
+        depth: depthMetersRef.current,
+        balance,
+        clearedCount: clearedCountRef.current,
+        rollBytes: rollBytesRef.current,
+        isDiving: isDivingRef.current,
+        isBreached: isBreachedRef.current,
+        frame: frameCount,
+      });
 
-      // 6. Draw Mini Pixel CRT Sonar Radar (Top-Right HUD)
-      drawMiniPixelRadar(ctx, frameCount, isDivingRef.current, isBreachedRef.current);
+      // 6. Draw 360° PPI CRT Sonar Radar (Top-Right HUD)
+      drawCrtSonarScope(ctx, frameCount, isDivingRef.current, isBreachedRef.current);
 
       // 7. Draw Top Arcade Telemetry Header Bar
-      drawTopArcadeHeader(ctx, balance, depthMetersRef.current, isDivingRef.current);
+      drawTopArcadeTelemetryBar(ctx, balance, depthMetersRef.current);
 
       // 8. Draw Bottom Integrated Arcade Control Deck Bezel
-      drawBottomArcadeDeck(ctx, wager, payoutAmount, isDivingRef.current, isBreachedRef.current, clearedCountRef.current, frameCount);
+      drawBottomArcadeDeck(ctx);
 
-      // 9. Draw Big Center Event Banner if Breached or Jackpot
+      // 9. Draw Event Banner if Breached or Jackpot
       if (isBreachedRef.current) {
-        drawBreachBanner(ctx, depthMetersRef.current, frameCount);
+        drawBreachImplosionBanner(ctx, depthMetersRef.current, frameCount);
       } else if (clearedCountRef.current === 5) {
-        drawJackpotBanner(ctx, frameCount);
+        drawJackpotVictoryBanner(ctx, frameCount);
       }
+
+      // 10. Draw Retro CRT Micro-Scanlines Shader & Corner Vignette
+      drawCrtScanlinesAndVignette(ctx);
 
       ctx.restore();
 
@@ -378,335 +405,9 @@ export const PixelSubmarineGame: React.FC = () => {
 };
 
 // -------------------------------------------------------------
-// PROCEDURAL PIXEL ART RENDER FUNCTIONS (Pure Canvas, Zero CSS)
+// LOCAL HELPER CANVAS FUNCTIONS
 // -------------------------------------------------------------
 
-/**
- * 1. Draw Depth-Adaptive Ocean Background Biomes
- */
-function drawOceanBiomes(ctx: CanvasRenderingContext2D, depth: number, frame: number) {
-  // Depth progress 0.0 (surface) to 1.0 (11,000m)
-  const frac = Math.min(depth / 11000, 1.0);
-
-  // Dynamic sky & ocean gradients based on depth
-  const grad = ctx.createLinearGradient(0, 30, 0, 480);
-  if (frac < 0.15) {
-    // Surface to 1,000m: Sunlit Cyan to Deep Blue
-    grad.addColorStop(0, '#0284c7');
-    grad.addColorStop(0.4, '#0369a1');
-    grad.addColorStop(1, '#082f49');
-  } else if (frac < 0.4) {
-    // 1,000m - 3,000m: Twilight Deep Navy
-    grad.addColorStop(0, '#082f49');
-    grad.addColorStop(0.5, '#0c2238');
-    grad.addColorStop(1, '#041221');
-  } else if (frac < 0.7) {
-    // 3,000m - 6,000m: Abyssal Midnight
-    grad.addColorStop(0, '#041221');
-    grad.addColorStop(0.6, '#020b14');
-    grad.addColorStop(1, '#01060c');
-  } else {
-    // 6,000m - 11,000m: Mariana Hadal Trench Void
-    grad.addColorStop(0, '#020813');
-    grad.addColorStop(0.5, '#05040a');
-    grad.addColorStop(1, '#080309');
-  }
-
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 30, 960, 450);
-
-  // Sunlight Rays Shimmer on Surface (if depth < 1500m)
-  if (depth < 1500) {
-    const rayAlpha = Math.max(0, (1 - depth / 1500) * 0.25);
-    ctx.fillStyle = `rgba(186, 230, 253, ${rayAlpha})`;
-    for (let i = 0; i < 5; i++) {
-      const x = 180 + i * 140 + Math.sin(frame * 0.02 + i) * 20;
-      ctx.beginPath();
-      ctx.moveTo(x, 30);
-      ctx.lineTo(x + 80, 480);
-      ctx.lineTo(x + 120, 480);
-      ctx.lineTo(x + 20, 30);
-      ctx.closePath();
-      ctx.fill();
-    }
-  }
-
-  // Draw Distant Rocky Trench Walls in Background
-  ctx.fillStyle = frac > 0.6 ? '#130c17' : '#081726';
-  // Left cliff
-  ctx.beginPath();
-  ctx.moveTo(0, 100);
-  ctx.lineTo(120, 180);
-  ctx.lineTo(80, 290);
-  ctx.lineTo(140, 390);
-  ctx.lineTo(60, 480);
-  ctx.lineTo(0, 480);
-  ctx.closePath();
-  ctx.fill();
-
-  // Right cliff
-  ctx.beginPath();
-  ctx.moveTo(960, 80);
-  ctx.lineTo(840, 190);
-  ctx.lineTo(890, 300);
-  ctx.lineTo(810, 400);
-  ctx.lineTo(900, 480);
-  ctx.lineTo(960, 480);
-  ctx.closePath();
-  ctx.fill();
-
-  // Glowing Magma Fissures in Deep Hadal Trench (depth > 6000m)
-  if (depth > 6000) {
-    const glow = Math.sin(frame * 0.08) * 0.3 + 0.7;
-    ctx.strokeStyle = `rgba(239, 68, 68, ${glow * 0.8})`;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(40, 320);
-    ctx.lineTo(70, 360);
-    ctx.lineTo(50, 410);
-    ctx.moveTo(920, 280);
-    ctx.lineTo(870, 340);
-    ctx.lineTo(900, 410);
-    ctx.stroke();
-  }
-
-  // Hydrothermal Vent Chimneys on Seabed (if depth > 9000m)
-  if (depth > 9000) {
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(400, 440, 35, 40);
-    ctx.fillRect(620, 430, 45, 50);
-
-    // Chimney smoke particles
-    ctx.fillStyle = 'rgba(249, 115, 22, 0.4)';
-    for (let k = 0; k < 6; k++) {
-      const sy = 430 - ((frame * 2 + k * 18) % 80);
-      ctx.fillRect(412 + Math.sin(sy * 0.05) * 8, sy, 6, 6);
-      ctx.fillRect(638 + Math.cos(sy * 0.05) * 10, sy, 8, 8);
-    }
-  }
-}
-
-/**
- * 2. Draw Sea Creatures & Ambient Bubbles
- */
-function drawSeaCreaturesAndBubbles(
-  ctx: CanvasRenderingContext2D,
-  depth: number,
-  frame: number,
-  creatures: Array<{ x: number; y: number; speed: number; type: string; color: string; size: number }>,
-  bubbles: Array<{ x: number; y: number; speed: number; size: number; wobble: number }>,
-  isDiving: boolean
-) {
-  // Rising bubbles
-  ctx.fillStyle = 'rgba(224, 242, 254, 0.75)';
-  bubbles.forEach((b) => {
-    b.y -= b.speed * (isDiving ? 2.5 : 1.0);
-    b.x += Math.sin(frame * 0.05 + b.wobble) * 0.4;
-    if (b.y < 35) {
-      b.y = 475;
-      b.x = Math.random() * 960;
-    }
-    ctx.fillRect(Math.round(b.x), Math.round(b.y), b.size, b.size);
-  });
-
-  // Sea creatures
-  creatures.forEach((c) => {
-    c.x += c.speed;
-    if (c.x > 980) c.x = -20;
-    if (c.x < -20) c.x = 980;
-
-    const cy = c.y + Math.sin(frame * 0.04 + c.x * 0.02) * 8;
-    const px = Math.round(c.x);
-    const py = Math.round(cy);
-
-    if (c.type === 'fish' && depth < 3500) {
-      // 8-bit swimming fish
-      ctx.fillStyle = c.color;
-      ctx.fillRect(px, py, 8, 4);
-      ctx.fillRect(px + (c.speed > 0 ? -4 : 8), py - 1, 3, 6); // tail
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(px + (c.speed > 0 ? 5 : 1), py + 1, 2, 2); // eye
-    } else if (c.type === 'jelly' && depth >= 1000 && depth <= 7000) {
-      // Pulsing bioluminescent jellyfish
-      const pulse = Math.sin(frame * 0.1) * 2;
-      ctx.fillStyle = c.color;
-      ctx.fillRect(px - 4, py - 4 + pulse, 9, 6);
-      // Tentacles
-      ctx.fillRect(px - 3, py + 2 + pulse, 2, 8);
-      ctx.fillRect(px, py + 2 + pulse, 2, 10);
-      ctx.fillRect(px + 3, py + 2 + pulse, 2, 7);
-    } else if (c.type === 'angler' && depth >= 4000) {
-      // Abyssal Anglerfish with glowing lure
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(px, py, 14, 10);
-      ctx.fillRect(px + 10, py + 2, 4, 6); // teeth
-      // Glowing lure
-      const lureGlow = Math.sin(frame * 0.15) > 0 ? '#fde047' : '#eab308';
-      ctx.fillStyle = lureGlow;
-      ctx.fillRect(px + 16, py - 6, 4, 4);
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(px + 6, py);
-      ctx.lineTo(px + 16, py - 4);
-      ctx.stroke();
-    }
-  });
-}
-
-/**
- * 3. Draw The Detailed Pixel Art Submarine
- */
-function drawPixelSubmarine(
-  ctx: CanvasRenderingContext2D,
-  _depth: number,
-  frame: number,
-  isDiving: boolean,
-  isBreached: boolean
-) {
-  // Center submarine anchor coordinates
-  const cx = 520;
-  const bobY = 260 + (isDiving ? Math.sin(frame * 0.12) * 8 : Math.sin(frame * 0.05) * 12);
-  const cy = Math.round(bobY);
-
-  ctx.save();
-  ctx.translate(cx, cy);
-
-  // Pitch angle: dive downward (-14 deg) or roll on breach
-  if (isDiving) {
-    ctx.rotate(0.22 + Math.sin(frame * 0.1) * 0.03);
-  } else if (isBreached) {
-    ctx.rotate(-0.35 + (Math.random() - 0.5) * 0.1);
-  } else {
-    ctx.rotate(Math.sin(frame * 0.04) * 0.04);
-  }
-
-  // --- Volumetric Searchlight Cone ---
-  const beamGrad = ctx.createLinearGradient(60, 0, 320, 0);
-  beamGrad.addColorStop(0, 'rgba(103, 232, 249, 0.45)');
-  beamGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.18)');
-  beamGrad.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
-
-  ctx.fillStyle = beamGrad;
-  ctx.beginPath();
-  ctx.moveTo(56, -4);
-  ctx.lineTo(340, -75);
-  ctx.lineTo(340, 85);
-  ctx.lineTo(56, 14);
-  ctx.closePath();
-  ctx.fill();
-
-  // --- Submarine Main Hull (16-bit Bathyscaphe Yellow) ---
-  // Lower dark steel ballast keel
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(-65, 8, 120, 10);
-  ctx.fillStyle = '#1e293b';
-  ctx.fillRect(-60, 5, 110, 6);
-
-  // Main yellow cylindrical hull
-  ctx.fillStyle = '#ca8a04'; // shadow
-  ctx.fillRect(-60, -16, 115, 24);
-  ctx.fillStyle = '#eab308'; // body
-  ctx.fillRect(-58, -18, 110, 22);
-  ctx.fillStyle = '#fef08a'; // top highlight
-  ctx.fillRect(-54, -20, 100, 4);
-
-  // Front hemispherical nosecone
-  ctx.fillStyle = '#ca8a04';
-  ctx.fillRect(52, -14, 10, 18);
-  ctx.fillStyle = '#eab308';
-  ctx.fillRect(58, -10, 8, 12);
-  ctx.fillRect(64, -6, 6, 6);
-
-  // Rear tail cone
-  ctx.fillStyle = '#854d0e';
-  ctx.fillRect(-70, -12, 12, 16);
-  ctx.fillRect(-78, -8, 10, 10);
-
-  // Structural Bronze Flange Rings
-  ctx.fillStyle = '#78350f';
-  [-40, -15, 10, 35].forEach((rx) => {
-    ctx.fillRect(rx, -21, 5, 29);
-    ctx.fillStyle = '#f59e0b';
-    ctx.fillRect(rx + 1, -21, 3, 29);
-    ctx.fillStyle = '#78350f';
-  });
-
-  // Conning Tower (Sail / Bridge)
-  ctx.fillStyle = '#ca8a04';
-  ctx.fillRect(-8, -36, 26, 18);
-  ctx.fillStyle = '#eab308';
-  ctx.fillRect(-6, -38, 22, 18);
-  ctx.fillStyle = '#1e293b'; // bridge cap
-  ctx.fillRect(-7, -40, 24, 4);
-
-  // Periscope & Radio Antenna Masts
-  ctx.fillStyle = '#64748b';
-  ctx.fillRect(4, -54, 3, 16);
-  ctx.fillRect(1, -54, 8, 3); // periscope optics
-  ctx.fillRect(-4, -48, 2, 10); // antenna
-
-  // Red Emergency Beacon Lamp
-  const beaconOn = isBreached ? (Math.floor(frame / 6) % 2 === 0) : (Math.floor(frame / 20) % 2 === 0);
-  ctx.fillStyle = beaconOn ? '#ef4444' : '#450a0a';
-  ctx.fillRect(-7, -43, 4, 4);
-
-  // Pilot Cockpit Observation Dome (Glowing Cyan Glass with Diver Silhouette)
-  ctx.fillStyle = '#0369a1';
-  ctx.fillRect(20, -10, 18, 14);
-  ctx.fillStyle = '#38bdf8';
-  ctx.fillRect(22, -8, 14, 10);
-  ctx.fillStyle = '#bae6fd'; // specular shine
-  ctx.fillRect(24, -6, 4, 4);
-  // Pilot silhouette inside
-  ctx.fillStyle = '#082f49';
-  ctx.fillRect(26, -5, 6, 6);
-
-  // Forward Dual Searchlight Projector Heads
-  ctx.fillStyle = '#d97706';
-  ctx.fillRect(50, -4, 8, 7);
-  ctx.fillRect(50, 6, 8, 7);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(56, -3, 3, 5);
-  ctx.fillRect(56, 7, 3, 5);
-
-  // Hydroplanes / Diving Fins
-  ctx.fillStyle = '#1e293b';
-  ctx.fillRect(12, 1, 14, 4);
-  ctx.fillRect(-52, 1, 14, 4);
-  ctx.fillRect(-72, -18, 10, 8); // top rudder
-
-  // Spinning Twin Stern Propellers (4-frame pixel animation)
-  const propFrame = Math.floor(frame / (isDiving ? 2 : 5)) % 4;
-  ctx.fillStyle = '#d97706';
-  ctx.fillRect(-82, -4, 5, 6); // shaft
-
-  // Animated blade positions
-  if (propFrame === 0) {
-    ctx.fillRect(-85, -14, 4, 24);
-  } else if (propFrame === 1) {
-    ctx.fillRect(-86, -11, 4, 18);
-  } else if (propFrame === 2) {
-    ctx.fillRect(-85, -5, 4, 8);
-  } else {
-    ctx.fillRect(-86, -11, 4, 18);
-  }
-
-  // Bubble Wake streaming from propeller
-  ctx.fillStyle = 'rgba(240, 249, 255, 0.85)';
-  const bubbleSpd = isDiving ? 4 : 2;
-  for (let b = 0; b < 6; b++) {
-    const bx = -92 - ((frame * bubbleSpd + b * 22) % 120);
-    const by = -2 + Math.sin(bx * 0.1) * 6;
-    ctx.fillRect(bx, by, 3 + (b % 3), 3 + (b % 3));
-  }
-
-  ctx.restore();
-}
-
-/**
- * 4. Draw Active Particle Bursts (Explosions / Win Confetti)
- */
 function drawParticles(
   ctx: CanvasRenderingContext2D,
   particles: Array<{ x: number; y: number; vx: number; vy: number; size: number; color: string; life: number; maxLife: number }>
@@ -716,220 +417,19 @@ function drawParticles(
     p.x += p.vx;
     p.y += p.vy;
     p.life++;
-
-    ctx.fillStyle = p.color;
-    ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
-
     if (p.life >= p.maxLife) {
       particles.splice(i, 1);
+      continue;
     }
+    const alpha = 1 - p.life / p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = alpha;
+    ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size);
+    ctx.globalAlpha = 1.0;
   }
 }
 
-/**
- * 5. Draw In-Game Integrated Tactical Depth Gate Rail (Left HUD)
- */
-function drawDepthGateRail(
-  ctx: CanvasRenderingContext2D,
-  depth: number,
-  clearedCount: number,
-  rollBytes: number[],
-  isDiving: boolean,
-  isBreached: boolean
-) {
-  // Bounding box for left in-game HUD
-  const rx = 18;
-  const ry = 42;
-  const rw = 250;
-  const rh = 405;
-
-  // Dark retro arcade HUD panel with scanline grid
-  ctx.fillStyle = 'rgba(2, 6, 18, 0.88)';
-  ctx.fillRect(rx, ry, rw, rh);
-  ctx.strokeStyle = '#0284c7';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(rx, ry, rw, rh);
-
-  // Header
-  ctx.fillStyle = '#0284c7';
-  ctx.fillRect(rx, ry, rw, 22);
-  ctx.font = 'bold 9px "Press Start 2P", monospace';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText('HADAL DEPTH GATES', rx + 10, ry + 15);
-
-  // 5 Depth Gate Checkpoints
-  DEPTH_ZONES.forEach((zone, idx) => {
-    const gy = ry + 32 + idx * 72;
-    const isCleared = clearedCount > idx;
-    const isCurrent = isDiving && depth >= (idx > 0 ? DEPTH_ZONES[idx - 1].depthMeters : 0) && depth < zone.depthMeters;
-    const isBreachedHere = isBreached && clearedCount === idx;
-    const roll = rollBytes[idx];
-
-    // Gate Box
-    ctx.fillStyle = isBreachedHere
-      ? 'rgba(153, 27, 27, 0.85)'
-      : isCleared
-      ? 'rgba(6, 78, 59, 0.85)'
-      : isCurrent
-      ? 'rgba(146, 64, 14, 0.85)'
-      : 'rgba(15, 23, 42, 0.7)';
-    ctx.fillRect(rx + 8, gy, rw - 16, 64);
-
-    ctx.strokeStyle = isBreachedHere
-      ? '#ef4444'
-      : isCleared
-      ? '#10b981'
-      : isCurrent
-      ? '#f59e0b'
-      : '#334155';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(rx + 8, gy, rw - 16, 64);
-
-    // Gate Title & Depth
-    ctx.font = 'bold 9px "Press Start 2P", monospace';
-    ctx.fillStyle = isCleared ? '#6ee7b7' : isBreachedHere ? '#fca5a5' : '#f8fafc';
-    ctx.fillText(`${zone.depthMeters}M`, rx + 16, gy + 16);
-
-    ctx.font = '7px "Press Start 2P", monospace';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(zone.zone, rx + 16, gy + 28);
-
-    // Multiplier & Status
-    ctx.font = 'bold 9px "Press Start 2P", monospace';
-    ctx.fillStyle = idx === 4 ? '#fde047' : zone.multiplier > 0 ? '#34d399' : '#94a3b8';
-    ctx.fillText(zone.multiplier > 0 ? `${zone.multiplier.toFixed(2)}x` : '0.00x', rx + 175, gy + 16);
-
-    // Roll result or threshold
-    ctx.font = '8px "Press Start 2P", monospace';
-    if (roll !== undefined) {
-      const pass = roll < zone.threshold;
-      ctx.fillStyle = pass ? '#34d399' : '#f87171';
-      ctx.fillText(`R:${roll} ${pass ? '✔' : '✖'}`, rx + 16, gy + 50);
-    } else {
-      ctx.fillStyle = '#64748b';
-      ctx.fillText(`< ${zone.threshold} (T:${idx + 1})`, rx + 16, gy + 50);
-    }
-
-    // Status icon
-    ctx.fillText(isCleared ? '✔' : isBreachedHere ? '✖' : isCurrent ? '▶' : '•', rx + 205, gy + 50);
-  });
-}
-
-/**
- * 6. Draw Mini Pixel CRT Sonar Radar (Top-Right HUD)
- */
-function drawMiniPixelRadar(
-  ctx: CanvasRenderingContext2D,
-  frame: number,
-  isDiving: boolean,
-  isBreached: boolean
-) {
-  const rx = 820;
-  const ry = 42;
-  const r = 52;
-
-  // Radar circular scope background
-  ctx.save();
-  ctx.fillStyle = '#02180d';
-  ctx.beginPath();
-  ctx.arc(rx + r, ry + r, r, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = '#10b981';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Range rings
-  ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(rx + r, ry + r, r * 0.35, 0, Math.PI * 2);
-  ctx.arc(rx + r, ry + r, r * 0.7, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Crosshairs
-  ctx.beginPath();
-  ctx.moveTo(rx, ry + r);
-  ctx.lineTo(rx + r * 2, ry + r);
-  ctx.moveTo(rx + r, ry);
-  ctx.lineTo(rx + r, ry + r * 2);
-  ctx.stroke();
-
-  // Sweeping Radar Line
-  const sweepAngle = (frame * (isDiving ? 0.08 : 0.04)) % (Math.PI * 2);
-  ctx.strokeStyle = '#34d399';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(rx + r, ry + r);
-  ctx.lineTo(rx + r + Math.cos(sweepAngle) * r, ry + r + Math.sin(sweepAngle) * r);
-  ctx.stroke();
-
-  // Echo blip
-  const blipX = rx + r + Math.cos(1.8) * (r * 0.6);
-  const blipY = ry + r + Math.sin(1.8) * (r * 0.6);
-  ctx.fillStyle = isBreached ? '#ef4444' : '#34d399';
-  ctx.fillRect(Math.round(blipX), Math.round(blipY), 4, 4);
-
-  // Center Sub position
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(rx + r - 2, ry + r - 2, 4, 4);
-
-  // Label
-  ctx.font = '7px "Press Start 2P", monospace';
-  ctx.fillStyle = '#34d399';
-  ctx.fillText('SONAR 360°', rx + 14, ry + r * 2 + 14);
-
-  ctx.restore();
-}
-
-/**
- * 7. Draw Top Arcade Telemetry Header Bar
- */
-function drawTopArcadeHeader(
-  ctx: CanvasRenderingContext2D,
-  balance: number,
-  depth: number,
-  _isDiving: boolean
-) {
-  // Top Header Background
-  ctx.fillStyle = '#040b17';
-  ctx.fillRect(0, 0, 960, 32);
-  ctx.fillStyle = '#0284c7';
-  ctx.fillRect(0, 30, 960, 2);
-
-  ctx.font = 'bold 9px "Press Start 2P", monospace';
-
-  // Game Title
-  ctx.fillStyle = '#f59e0b';
-  ctx.fillText('DEPTH CHARGE // MARIANA 11,000M', 16, 20);
-
-  // Certified RTP Indicator
-  ctx.fillStyle = '#38bdf8';
-  ctx.fillText(`RTP: ${CERTIFIED_RTP}`, 430, 20);
-
-  // Player Balance / Credits
-  ctx.fillStyle = '#34d399';
-  ctx.fillText(`1UP: $${balance.toFixed(2)}`, 580, 20);
-
-  // Live Depth & Pressure
-  const atm = Math.round(1 + (depth / 10));
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText(`DEPTH: ${Math.round(depth)}M [${atm}ATM]`, 740, 20);
-}
-
-/**
- * 8. Draw Bottom Integrated Arcade Control Deck Bezel
- */
-function drawBottomArcadeDeck(
-  ctx: CanvasRenderingContext2D,
-  _wager: number,
-  _payout: number,
-  _isDiving: boolean,
-  _isBreached: boolean,
-  _clearedCount: number,
-  _frame: number
-) {
-  // Bottom Deck Frame
+function drawBottomArcadeDeck(ctx: CanvasRenderingContext2D) {
   const dy = 480;
   ctx.fillStyle = '#040914';
   ctx.fillRect(0, dy, 960, 60);
@@ -941,53 +441,4 @@ function drawBottomArcadeDeck(
   for (let x = 12; x < 950; x += 32) {
     ctx.fillRect(x, dy + 6, 16, 1);
   }
-}
-
-/**
- * 9. Draw Breach & Implosion Arcade Banner
- */
-function drawBreachBanner(ctx: CanvasRenderingContext2D, depth: number, frame: number) {
-  const flash = Math.floor(frame / 8) % 2 === 0;
-  ctx.fillStyle = 'rgba(69, 10, 10, 0.92)';
-  ctx.fillRect(280, 210, 460, 95);
-  ctx.strokeStyle = flash ? '#ef4444' : '#b91c1c';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(280, 210, 460, 95);
-
-  ctx.font = 'bold 12px "Press Start 2P", monospace';
-  ctx.fillStyle = '#fecaca';
-  ctx.textAlign = 'center';
-  ctx.fillText('! HULL IMPLOSION DETECTED !', 510, 245);
-
-  ctx.font = '8px "Press Start 2P", monospace';
-  ctx.fillStyle = '#f87171';
-  ctx.fillText(`CRITICAL PRESSURE AT ${Math.round(depth)} METERS`, 510, 268);
-  ctx.fillText('HULL STRESS EXCEEDED VESSEL RATING', 510, 285);
-  ctx.textAlign = 'left';
-}
-
-/**
- * 10. Draw Challenger Deep Grand Jackpot Banner
- */
-function drawJackpotBanner(ctx: CanvasRenderingContext2D, frame: number) {
-  const flash = Math.floor(frame / 6) % 2 === 0;
-  ctx.fillStyle = 'rgba(6, 78, 59, 0.94)';
-  ctx.fillRect(260, 200, 500, 105);
-  ctx.strokeStyle = flash ? '#fde047' : '#10b981';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(260, 200, 500, 105);
-
-  ctx.font = 'bold 13px "Press Start 2P", monospace';
-  ctx.fillStyle = '#fef08a';
-  ctx.textAlign = 'center';
-  ctx.fillText('★ CHALLENGER DEEP CONQUERED ★', 510, 238);
-
-  ctx.font = '10px "Press Start 2P", monospace';
-  ctx.fillStyle = '#34d399';
-  ctx.fillText('14.0240x GRAND JACKPOT SECURED!', 510, 265);
-
-  ctx.font = '8px "Press Start 2P", monospace';
-  ctx.fillStyle = '#a7f3d0';
-  ctx.fillText('11,000 METERS OCEAN FLOOR REACHED', 510, 288);
-  ctx.textAlign = 'left';
 }
