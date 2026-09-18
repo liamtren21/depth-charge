@@ -1,5 +1,11 @@
 # Depth Charge // Challenger Deep 11,000M
 
+* **Live Demo**: [https://depth-charge-sage.vercel.app](https://depth-charge-sage.vercel.app)
+* **Smart Contract**: [`contracts/DepthCharge.sol`](contracts/DepthCharge.sol) (`ICasinoGameV2` on Base L2)
+* **Hackathon Category**: Original Casino Game for **Chain Jam Vol. 1**
+
+---
+
 A 16-bit arcade submarine descent casino game built on the **Chain Casino SDK (`ICasinoGameV2`)** for Base L2.
 
 Instead of another generic web dashboard with card panels, Depth Charge runs inside a **single, unified retro arcade cabinet**. Players pilot a deep-sea bathyscaphe into the Mariana Trench through 5 hydrostatic pressure gates toward a **14.024x Grand Jackpot** at the Challenger Deep floor, with partial recovery multipliers kicking in past 3,000 meters.
