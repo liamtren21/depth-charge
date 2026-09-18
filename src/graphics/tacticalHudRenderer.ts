@@ -282,7 +282,7 @@ export function drawCrtScanlinesAndVignette(ctx: CanvasRenderingContext2D) {
 }
 
 /**
- * 5. Draw Hull Breach Implosion Warning Banner
+ * 5. Draw Hull Breach Implosion Warning Banner (Sleek Top Emergency Ribbon)
  */
 export function drawBreachImplosionBanner(
   ctx: CanvasRenderingContext2D,
@@ -290,27 +290,31 @@ export function drawBreachImplosionBanner(
   frame: number
 ) {
   ctx.save();
-  const bx = 340;
-  const by = 210;
-  const bw = 300;
-  const bh = 70;
+  const bx = 260;
+  const by = 38;
+  const bw = 440;
+  const bh = 42;
 
   // Flash border
-  const flash = Math.floor(frame / 6) % 2 === 0;
+  const flash = Math.floor(frame / 8) % 2 === 0;
   ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
   ctx.fillRect(bx, by, bw, bh);
   ctx.strokeStyle = flash ? '#ef4444' : '#7f1d1d';
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2;
   ctx.strokeRect(bx, by, bw, bh);
 
-  ctx.font = 'bold 8px "Press Start 2P", monospace';
-  ctx.fillStyle = '#ef4444';
-  ctx.fillText('! HULL IMPLOSION DETECTED !', bx + 22, by + 26);
+  // Left & right hazard alert markers
+  ctx.fillStyle = flash ? '#ef4444' : '#991b1b';
+  ctx.fillRect(bx + 4, by + 4, 8, bh - 8);
+  ctx.fillRect(bx + bw - 12, by + 4, 8, bh - 8);
 
-  ctx.font = '6px "Press Start 2P", monospace';
-  ctx.fillStyle = '#fca5a5';
-  ctx.fillText(`CRITICAL PRESSURE AT ${Math.round(depth)} METERS`, bx + 22, by + 44);
-  ctx.fillText('HULL STRESS EXCEEDED VESSEL RATING', bx + 22, by + 56);
+  ctx.font = 'bold 8px "Press Start 2P", monospace';
+  ctx.fillStyle = '#f43f5e';
+  ctx.fillText('! HULL IMPLOSION DETECTED !', bx + 26, by + 18);
+
+  ctx.font = '7px "Press Start 2P", monospace';
+  ctx.fillStyle = '#fda4af';
+  ctx.fillText(`CRITICAL PRESSURE AT ${Math.round(depth)}M // STRESS OVERLOAD`, bx + 26, by + 32);
 
   ctx.restore();
 }
@@ -323,29 +327,29 @@ export function drawJackpotVictoryBanner(
   frame: number
 ) {
   ctx.save();
-  const bx = 300;
-  const by = 190;
-  const bw = 380;
-  const bh = 85;
+  const bx = 250;
+  const by = 38;
+  const bw = 460;
+  const bh = 44;
 
   const glow = Math.sin(frame * 0.1) * 0.3 + 0.7;
   ctx.fillStyle = 'rgba(3, 7, 18, 0.96)';
   ctx.fillRect(bx, by, bw, bh);
   ctx.strokeStyle = `rgba(245, 158, 11, ${glow})`;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2;
   ctx.strokeRect(bx, by, bw, bh);
+
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillRect(bx + 4, by + 4, 8, bh - 8);
+  ctx.fillRect(bx + bw - 12, by + 4, 8, bh - 8);
 
   ctx.font = 'bold 9px "Press Start 2P", monospace';
   ctx.fillStyle = '#fbbf24';
-  ctx.fillText('★ CHALLENGER DEEP CONQUERED! ★', bx + 26, by + 30);
+  ctx.fillText('★ CHALLENGER DEEP CONQUERED! ★', bx + 24, by + 18);
 
-  ctx.font = 'bold 11px "Press Start 2P", monospace';
+  ctx.font = 'bold 8px "Press Start 2P", monospace';
   ctx.fillStyle = '#34d399';
-  ctx.fillText('14.024x GRAND JACKPOT', bx + 58, by + 52);
-
-  ctx.font = '7px "Press Start 2P", monospace';
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText('11,000 METERS // OCEANIC VOID REACHED', bx + 24, by + 70);
+  ctx.fillText('14.024x GRAND JACKPOT // 11,000M REACHED', bx + 24, by + 33);
 
   ctx.restore();
 }

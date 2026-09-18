@@ -1,9 +1,11 @@
 /**
  * 5-Layer Parallax Ocean Biomes & Atmospheric Deep-Sea Fauna Renderer
- * Features water caustics & godrays, bioluminescent jellyfish with sine tentacles,
- * 18th-century galleon shipwreck, anglerfish, hydrothermal black smokers,
- * hadal magma rifts, and the distant Abyssal Leviathan silhouette at 11,000m.
+ * Powered by authentic 16-bit pixel art assets for the Galleon Shipwreck and Abyssal Leviathan.
+ * Features gentle organic kinematics, water caustics & godrays, hydrothermal black smokers,
+ * and hadal magma rifts.
  */
+
+import { assetManager } from './assetLoader';
 
 export interface AmbientBubble {
   x: number;
@@ -66,8 +68,8 @@ export function drawOceanBiomes(
     const rayAlpha = Math.max(0, 1 - frac / 0.22);
     ctx.save();
     for (let i = 0; i < 7; i++) {
-      const rayX = 80 + i * 130 + Math.sin(frame * 0.02 + i) * 25;
-      const rayWidth = 45 + Math.sin(frame * 0.03 + i * 2) * 15;
+      const rayX = 80 + i * 130 + Math.sin(frame * 0.015 + i) * 20;
+      const rayWidth = 45 + Math.sin(frame * 0.02 + i * 2) * 12;
       const rayGrad = ctx.createLinearGradient(rayX, 32, rayX + 60, 420);
       rayGrad.addColorStop(0, `rgba(255, 255, 255, ${0.25 * rayAlpha})`);
       rayGrad.addColorStop(0.4, `rgba(56, 189, 248, ${0.15 * rayAlpha})`);
@@ -92,12 +94,12 @@ export function drawOceanBiomes(
   }
 
   // -------------------------------------------------------------
-  // 3. BIOME 3: SUNKEN 18TH-CENTURY GALLEON SHIPWRECK (2,500m - 5,500m)
+  // 3. BIOME 3: SUNKEN 18TH-CENTURY GALLEON SHIPWRECK (2,500m - 5,800m)
   // -------------------------------------------------------------
-  if (depth > 2200 && depth < 6200) {
-    const wreckProgress = (depth - 2200) / 4000;
-    const wreckY = 460 - (wreckProgress * 220);
-    drawSunkenGalleon(ctx, 620, wreckY, frame);
+  if (depth > 2000 && depth < 6200) {
+    const wreckProgress = (depth - 2000) / 4200;
+    const wreckY = 460 - (wreckProgress * 200);
+    drawSunkenGalleon(ctx, 580, wreckY, frame);
   }
 
   // -------------------------------------------------------------
@@ -112,7 +114,7 @@ export function drawOceanBiomes(
   // -------------------------------------------------------------
   // 5. BIOME 5: HADAL MAGMA FISSURES & LEVIATHAN (8,000m - 11,000m)
   // -------------------------------------------------------------
-  if (depth > 7800) {
+  if (depth > 7500) {
     drawHadalMagmaFissures(ctx, frame);
     drawAbyssalLeviathan(ctx, depth, frame);
   }
@@ -128,11 +130,9 @@ export function drawOceanBiomes(
  */
 function drawPixelCoralReef(ctx: CanvasRenderingContext2D, baseCoralY: number, frame: number) {
   ctx.save();
-  // Deep reef rock base
   ctx.fillStyle = '#164e63';
   ctx.fillRect(580, baseCoralY, 380, 50);
 
-  // Multi-colored coral branches
   const corals = [
     { x: 620, color: '#f43f5e', h: 32 },
     { x: 670, color: '#fbbf24', h: 42 },
@@ -143,60 +143,29 @@ function drawPixelCoralReef(ctx: CanvasRenderingContext2D, baseCoralY: number, f
 
   for (const c of corals) {
     ctx.fillStyle = c.color;
-    const sway = Math.sin(frame * 0.04 + c.x) * 3;
-    // Coral stem
+    const sway = Math.sin(frame * 0.03 + c.x) * 2;
     ctx.fillRect(c.x + sway, baseCoralY - c.h, 6, c.h);
     ctx.fillRect(c.x - 6 + sway * 1.2, baseCoralY - c.h + 8, 18, 5);
-    ctx.fillRect(c.x - 4 + sway * 1.4, baseCoralY - c.h, 14, 4);
   }
   ctx.restore();
 }
 
 /**
- * Sunken 18th-Century Galleon Shipwreck resting on a shelf
+ * Sunken 18th-Century Galleon Shipwreck (High-Definition 16-Bit Asset)
  */
-function drawSunkenGalleon(ctx: CanvasRenderingContext2D, gx: number, gy: number, frame: number) {
+function drawSunkenGalleon(ctx: CanvasRenderingContext2D, gx: number, gy: number, _frame: number) {
   ctx.save();
-  // Hull silhouette (rotted oak wood)
-  ctx.fillStyle = '#1c1917';
-  ctx.beginPath();
-  ctx.moveTo(gx - 80, gy + 20);
-  ctx.lineTo(gx + 110, gy + 10);
-  ctx.lineTo(gx + 130, gy - 25);
-  ctx.lineTo(gx - 40, gy - 15);
-  ctx.closePath();
-  ctx.fill();
-
-  // Planking texture & barnacles
-  ctx.fillStyle = '#292524';
-  ctx.fillRect(gx - 60, gy - 10, 150, 6);
-  ctx.fillRect(gx - 50, gy, 140, 6);
-
-  // Barnacles & deep-sea bioluminescent algae
-  ctx.fillStyle = '#0d9488';
-  for (let i = 0; i < 6; i++) {
-    const algaGlow = Math.sin(frame * 0.05 + i) * 0.3 + 0.7;
-    ctx.globalAlpha = algaGlow;
-    ctx.fillRect(gx - 30 + i * 22, gy - 6 + (i % 2) * 8, 3, 3);
+  const wreckImg = assetManager.getImage('shipwreck');
+  if (wreckImg) {
+    // High-definition 16-bit pirate galleon asset
+    const ww = 250;
+    const wh = 147;
+    ctx.drawImage(wreckImg, gx, gy - wh / 2, ww, wh);
+  } else {
+    // Fallback silhouette
+    ctx.fillStyle = '#1c1917';
+    ctx.fillRect(gx, gy, 120, 40);
   }
-  ctx.globalAlpha = 1.0;
-
-  // Snapped Mainmast & Rigging
-  ctx.fillStyle = '#44403c';
-  ctx.fillRect(gx + 20, gy - 70, 6, 60);
-  // Broken tilted mast spar
-  ctx.save();
-  ctx.translate(gx + 22, gy - 70);
-  ctx.rotate(0.5);
-  ctx.fillRect(-20, 0, 45, 4);
-  ctx.restore();
-
-  // Cannon portholes
-  ctx.fillStyle = '#0c0a09';
-  ctx.fillRect(gx - 20, gy - 4, 8, 8);
-  ctx.fillRect(gx + 20, gy - 4, 8, 8);
-  ctx.fillRect(gx + 60, gy - 4, 8, 8);
-
   ctx.restore();
 }
 
@@ -206,35 +175,31 @@ function drawSunkenGalleon(ctx: CanvasRenderingContext2D, gx: number, gy: number
 function drawHydrothermalSmokers(ctx: CanvasRenderingContext2D, sy: number, frame: number) {
   ctx.save();
   const chimneys = [
-    { x: 680, w: 28, h: 90 },
-    { x: 820, w: 22, h: 110 },
+    { x: 700, w: 28, h: 90 },
+    { x: 840, w: 22, h: 110 },
   ];
 
   for (const chim of chimneys) {
-    // Basalt pillar chimney
     ctx.fillStyle = '#1c1917';
     ctx.fillRect(chim.x, sy - chim.h, chim.w, chim.h + 60);
     ctx.fillStyle = '#292524';
     ctx.fillRect(chim.x + 4, sy - chim.h + 6, chim.w - 8, chim.h + 50);
 
-    // Chimney crater rim
     ctx.fillStyle = '#b45309';
     ctx.fillRect(chim.x - 2, sy - chim.h - 4, chim.w + 4, 6);
 
-    // Billowing Black Smoke Plumes (Procedural particle clusters)
-    for (let p = 0; p < 8; p++) {
-      const pOffset = (frame * 1.5 + p * 18) % 110;
-      const px = chim.x + chim.w / 2 + Math.sin(frame * 0.06 + p) * 14;
+    for (let p = 0; p < 7; p++) {
+      const pOffset = (frame * 1.2 + p * 20) % 110;
+      const px = chim.x + chim.w / 2 + Math.sin(frame * 0.04 + p) * 10;
       const py = sy - chim.h - pOffset;
-      const pSize = 6 + (pOffset * 0.18);
-      const alpha = Math.max(0, 1 - pOffset / 110) * 0.55;
+      const pSize = 5 + (pOffset * 0.16);
+      const alpha = Math.max(0, 1 - pOffset / 110) * 0.5;
 
       ctx.fillStyle = `rgba(15, 23, 42, ${alpha})`;
       ctx.beginPath();
       ctx.arc(px, py, pSize, 0, Math.PI * 2);
       ctx.fill();
 
-      // Glowing sulfur sparks inside the plume
       if (p % 2 === 0) {
         ctx.fillStyle = `rgba(245, 158, 11, ${alpha * 1.2})`;
         ctx.fillRect(px - 1, py - 1, 2, 2);
@@ -251,11 +216,9 @@ function drawHadalMagmaFissures(ctx: CanvasRenderingContext2D, frame: number) {
   ctx.save();
   const floorY = 465;
 
-  // Oceanic void seabed sediment
   ctx.fillStyle = '#090d16';
   ctx.fillRect(0, floorY, 960, 15);
 
-  // Glowing Magma Fissures
   const fissures = [
     { x1: 340, x2: 430 },
     { x1: 520, x2: 660 },
@@ -263,64 +226,41 @@ function drawHadalMagmaFissures(ctx: CanvasRenderingContext2D, frame: number) {
   ];
 
   for (const f of fissures) {
-    const pulse = Math.sin(frame * 0.08 + f.x1) * 0.25 + 0.75;
-    // Outer red glow
+    const pulse = Math.sin(frame * 0.05 + f.x1) * 0.2 + 0.8;
     ctx.fillStyle = `rgba(239, 68, 68, ${0.4 * pulse})`;
     ctx.fillRect(f.x1 - 4, floorY + 2, (f.x2 - f.x1) + 8, 8);
 
-    // Bright core magma line
     ctx.fillStyle = `rgba(245, 158, 11, ${0.9 * pulse})`;
     ctx.fillRect(f.x1, floorY + 4, f.x2 - f.x1, 3);
-    ctx.fillStyle = `rgba(254, 240, 138, ${0.95 * pulse})`;
-    ctx.fillRect(f.x1 + 10, floorY + 5, (f.x2 - f.x1) - 20, 1);
   }
   ctx.restore();
 }
 
 /**
- * Mythical Abyssal Leviathan (Silhouetted colossus at 11,000m)
+ * Mythical Abyssal Leviathan (Smooth, Majestic 16-Bit Colossus)
  */
 function drawAbyssalLeviathan(ctx: CanvasRenderingContext2D, depth: number, frame: number) {
-  if (depth < 8200) return;
+  if (depth < 7800) return;
 
   ctx.save();
-  const alpha = Math.min(1.0, (depth - 8200) / 2000);
-  ctx.globalAlpha = 0.45 * alpha;
+  const alpha = Math.min(1.0, (depth - 7800) / 2200);
+  ctx.globalAlpha = 0.55 * alpha;
 
-  // Massive slow creature swimming across the distant background
-  const lx = ((frame * 0.4) % 1400) - 300;
-  const ly = 240 + Math.sin(frame * 0.02) * 16;
+  // Gentle, slow, majestic glide across the abyss (zero jittering/shaking)
+  const lx = 960 - ((frame * 0.3) % 1500);
+  const ly = 160 + Math.sin(frame * 0.012) * 6;
 
-  // Massive serpentine body segments
-  ctx.fillStyle = '#020617';
-  for (let s = 0; s < 12; s++) {
-    const segX = lx - s * 22;
-    const segY = ly + Math.sin(frame * 0.04 - s * 0.4) * 12;
-    const segRadius = 32 - s * 2;
-    if (segRadius > 4) {
-      ctx.beginPath();
-      ctx.arc(segX, segY, segRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Dorsal ridge spikes
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.moveTo(segX, segY - segRadius);
-      ctx.lineTo(segX - 8, segY - segRadius - 14);
-      ctx.lineTo(segX + 8, segY - segRadius);
-      ctx.closePath();
-      ctx.fill();
-    }
+  const levImg = assetManager.getImage('leviathan');
+  if (levImg) {
+    // Draw the magnificent 16-bit abyssal leviathan asset
+    const lw = 340;
+    const lh = 158;
+    ctx.drawImage(levImg, lx, ly, lw, lh);
+  } else {
+    // Fallback
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(lx, ly, 180, 50);
   }
-
-  // Glowing golden Leviathan Eye
-  ctx.globalAlpha = 0.85 * alpha;
-  ctx.fillStyle = '#fbbf24';
-  ctx.beginPath();
-  ctx.arc(lx + 18, ly - 6, 4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(lx + 19, ly - 7, 2, 2);
 
   ctx.restore();
 }
@@ -346,24 +286,11 @@ function drawTrenchCanyonWalls(ctx: CanvasRenderingContext2D, _depth: number, fr
   ctx.closePath();
   ctx.fill();
 
-  // Shaded inner canyon ridge
-  ctx.fillStyle = '#091527';
-  ctx.beginPath();
-  ctx.moveTo(880, 32);
-  ctx.lineTo(855, 170);
-  ctx.lineTo(875, 300);
-  ctx.lineTo(830, 410);
-  ctx.lineTo(860, 480);
-  ctx.lineTo(960, 480);
-  ctx.lineTo(960, 32);
-  ctx.closePath();
-  ctx.fill();
-
   ctx.restore();
 }
 
 /**
- * Ambient Marine Fauna & Bubbles (Siphonophores with sine tentacles, Anglerfish, etc.)
+ * Ambient Marine Fauna & Bubbles (Gentle, Natural Swimming Kinematics)
  */
 export function drawFaunaAndBubbles(
   ctx: CanvasRenderingContext2D,
@@ -375,12 +302,12 @@ export function drawFaunaAndBubbles(
 ) {
   ctx.save();
 
-  // 1. Bubbles rising with sine wobble
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  // 1. Bubbles rising smoothly
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
   for (const b of bubbles) {
-    b.y -= isDiving ? b.speed * 2.8 : b.speed;
-    b.wobble += 0.05;
-    const wx = b.x + Math.sin(b.wobble) * 4;
+    b.y -= isDiving ? b.speed * 2.5 : b.speed;
+    b.wobble += 0.03;
+    const wx = b.x + Math.sin(b.wobble) * 2.5;
 
     if (b.y < 34) {
       b.y = 476;
@@ -390,37 +317,35 @@ export function drawFaunaAndBubbles(
     ctx.fillRect(Math.floor(wx), Math.floor(b.y), b.size, b.size);
   }
 
-  // 2. Bioluminescent Creatures & Fauna
+  // 2. Bioluminescent Creatures with Smooth, Gentle Undulation
   for (const c of creatures) {
     c.x += c.speed;
     if (c.x > 980) c.x = -30;
     if (c.x < -30) c.x = 980;
 
-    const cy = c.y + Math.sin(frame * 0.04 + c.x) * 6;
+    // Smooth, gentle 2px vertical drift (fixed: no more violent shaking!)
+    const cy = c.y + Math.sin(frame * 0.015 + c.x * 0.01) * 2;
 
     if (c.type === 'jelly') {
-      // Siphonophore / Bioluminescent Jellyfish with sinuous tentacles
       ctx.fillStyle = c.color;
       ctx.beginPath();
-      ctx.arc(c.x, cy, c.size, Math.PI, 0); // bell dome
+      ctx.arc(c.x, cy, c.size, Math.PI, 0);
       ctx.fill();
 
-      // Trailing tentacles
+      // Soft, natural wave for tentacles
       ctx.strokeStyle = c.color;
       ctx.lineWidth = 1;
       for (let t = -2; t <= 2; t++) {
         const tx = c.x + t * 2;
         ctx.beginPath();
         ctx.moveTo(tx, cy);
-        const wave = Math.sin(frame * 0.08 + t + c.x * 0.1) * 5;
-        ctx.quadraticCurveTo(tx + wave, cy + 12, tx - wave * 0.5, cy + 22);
+        const wave = Math.sin(frame * 0.03 + t + c.x * 0.02) * 2;
+        ctx.quadraticCurveTo(tx + wave, cy + 10, tx - wave * 0.5, cy + 18);
         ctx.stroke();
       }
     } else if (c.type === 'angler') {
-      // Deep-Sea Anglerfish with glowing lure
       ctx.fillStyle = '#0f172a';
-      ctx.fillRect(c.x - 10, cy - 6, 20, 12); // body
-      // Tail
+      ctx.fillRect(c.x - 10, cy - 6, 20, 12);
       ctx.beginPath();
       ctx.moveTo(c.x - 10, cy);
       ctx.lineTo(c.x - 16, cy - 6);
@@ -428,28 +353,23 @@ export function drawFaunaAndBubbles(
       ctx.closePath();
       ctx.fill();
 
-      // Sharp white teeth
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(c.x + 8, cy - 2, 2, 4);
 
-      // Angler Esca Lure
       ctx.strokeStyle = '#475569';
       ctx.beginPath();
       ctx.moveTo(c.x + 2, cy - 6);
-      ctx.quadraticCurveTo(c.x + 10, cy - 18, c.x + 16, cy - 10);
+      ctx.quadraticCurveTo(c.x + 10, cy - 16, c.x + 14, cy - 8);
       ctx.stroke();
 
-      // Pulsing Bioluminescent Lure Bulb
-      const lurePulse = Math.sin(frame * 0.1) * 0.3 + 0.7;
+      const lurePulse = Math.sin(frame * 0.08) * 0.25 + 0.75;
       ctx.fillStyle = `rgba(254, 240, 138, ${lurePulse})`;
       ctx.beginPath();
-      ctx.arc(c.x + 16, cy - 10, 3, 0, Math.PI * 2);
+      ctx.arc(c.x + 14, cy - 8, 3, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      // Standard schooling fish
       ctx.fillStyle = c.color;
       ctx.fillRect(c.x - 4, cy - 2, 8, 4);
-      // Tail
       ctx.fillRect(c.x - (c.speed > 0 ? 6 : -4), cy - 3, 2, 6);
     }
   }
